@@ -1,6 +1,6 @@
 # notRDP
 
-A Havoc C2 plugin that creates an invisible alternate Windows desktop, streams it to a browser-based viewer, and supports full mouse/keyboard interaction — like RDP, but invisible to the target user.
+A Havoc C2 plugin that creates an invisible alternate Windows desktop, streams it to a browser-based viewer, and supports full mouse/keyboard interaction like RDP, but invisible to the target user.
 
 **Author:** Dhanush Arvind
 
@@ -10,19 +10,6 @@ A Havoc C2 plugin that creates an invisible alternate Windows desktop, streams i
 2. Captures the hidden desktop using `PrintWindow` compositing and streams JPEG frames
 3. Injects mouse/keyboard input via `PostMessage` directly to hidden desktop windows
 4. Renders the stream in a browser viewer with full input capture
-
-## Files
-
-| File | Description |
-|---|---|
-| `notrdp.py` | Havoc plugin — registers commands, manages streaming, relays input |
-| `_viewer_server.py` | HTTP server with long-polling for frames and input relay |
-| `viewer.html` | Browser viewer with input capture |
-| `screeninput.c` | BOF — injects mouse/keyboard via `PostMessage` or `SendInput` |
-| `screenshot.c` | BOF — captures desktop via GDI + GDI+ JPEG encoding |
-| `notrdp_mgr.c` | BOF — creates/closes hidden desktops, launches processes |
-| `beacon.h` | BOF API header |
-| `Makefile` | Cross-compilation rules |
 
 ## Prerequisites
 
@@ -74,8 +61,3 @@ notrdp [port] [quality]   # Start hidden desktop session
 notrdp-close              # Close session
 ```
 
-Viewer opens automatically at `http://127.0.0.1:4444`.
-
-## License
-
-For authorized security testing and educational use only.
