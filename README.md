@@ -8,7 +8,6 @@ A Havoc C2 plugin that creates an invisible alternate Windows desktop, streams i
 
 
 
-**Author:** Dhanush Arvind
 
 ## How It Works
 
