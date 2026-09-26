@@ -1,5 +1,5 @@
 /*
- * screeninput.c - Remote Input BOF for Havoc C2
+ * screeninput.c - Remote Input BOF for notRDP (Havoc C2)
  *
  * Injects mouse and keyboard events into any desktop (default or hidden).
  *

