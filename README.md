@@ -14,12 +14,6 @@ A Havoc C2 plugin that creates an invisible alternate Windows desktop, streams i
 3. Injects mouse/keyboard input via `PostMessage` directly to hidden desktop windows
 4. Renders the stream in a browser viewer with full input capture
 
-## POC
-
-<p align="center">
-  <video src="https://github.com/dagowda/notRDP/blob/a956fdda72acb2acc42fe5fbd4465dc066537a61/POC.mp4" controls width="700"></video>
-</p>
-
 ## Prerequisites
 
 Cross-compiler: `x86_64-w64-mingw32-gcc` (and optionally `i686-w64-mingw32-gcc` for x86)
