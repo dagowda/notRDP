@@ -2,6 +2,12 @@
 
 A Havoc C2 plugin that creates an invisible alternate Windows desktop, streams it to a browser-based viewer, and supports full mouse/keyboard interaction like RDP, but invisible to the target user.
 
+<p align="center">
+  <img src="https://github.com/dagowda/notRDP/blob/ed837307a83b8bf05ec4df9f3a76fca7c2422927/notRDP%20logo%402x.png" alt="image_alt">
+</p>
+
+
+
 **Author:** Dhanush Arvind
 
 ## How It Works
