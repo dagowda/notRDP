@@ -10,12 +10,14 @@
 body{
   background:#0b1120;
   color:#b8c4d4;
-  font-family:'Cascadia Code','Fira Code','Consolas','SF Mono','Liberation Mono',monospace;
+  font-family:'Bahnschrift','Futura','Avenir Next','Century Gothic',sans-serif;
   font-size:12px;
+  font-weight:500;
   height:100vh;
   display:flex;
   flex-direction:column;
   overflow:hidden;
+  text-transform:uppercase;
 }
 
 .toolbar{
@@ -30,62 +32,66 @@ body{
 }
 
 .brand{
-  font-size:14px;
+  font-size:13px;
   font-weight:700;
-  letter-spacing:1px;
-  color:#3b8ef8;
-  margin-right:6px;
-  text-transform:uppercase;
+  letter-spacing:4px;
+  color:#3a4a60;
+  margin-right:8px;
   user-select:none;
+  display:inline-flex;
+  align-items:center;
 }
 
 .toolbar select{
-  background:#111b30;
-  border:1px solid #1e3055;
-  color:#8fa4c0;
-  padding:5px 10px;
-  border-radius:3px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);
+  color:#3e5068;
+  padding:4px 10px;
+  border-radius:2px;
   font:inherit;
   font-size:11px;
   cursor:pointer;
   min-width:160px;
   outline:none;
   transition:border-color .2s;
+  text-transform:uppercase;
 }
-.toolbar select:focus{border-color:#3b8ef8}
+.toolbar select option{text-transform:uppercase}
+.toolbar select:focus{border-color:rgba(255,255,255,.12)}
 
 .tb-btn{
-  border:1px solid #1e3055;
-  padding:5px 14px;
-  border-radius:3px;
+  border:1px solid rgba(255,255,255,.04);
+  padding:4px 12px;
+  border-radius:2px;
   font:inherit;
   font-size:11px;
   cursor:pointer;
-  transition:all .15s;
-  background:#111b30;
-  color:#6b7f9a;
+  transition:all .12s;
+  background:rgba(255,255,255,.02);
+  color:#3a4d64;
   white-space:nowrap;
   line-height:1;
+  letter-spacing:1px;
 }
-.tb-btn:hover{background:#162240;color:#b0c4e0;border-color:#2a4070}
-.tb-btn:active{background:#1a2850}
+.tb-btn:hover{background:rgba(255,255,255,.05);color:#506478;border-color:rgba(255,255,255,.08)}
+.tb-btn:active{background:rgba(255,255,255,.07)}
 
-.btn-start{color:#34d399;border-color:#134030}
-.btn-start:hover{background:#0f2a20;color:#5eead4;border-color:#1a5040}
+.btn-start{}
+.btn-start:hover{}
 
-.btn-stop{color:#f87171;border-color:#401313}
-.btn-stop:hover{background:#2a0f0f;color:#fca5a5;border-color:#5a1a1a}
+.btn-stop{}
+.btn-stop:hover{}
 
-.btn-fs{padding:5px 8px;font-size:13px}
+.btn-fs{padding:4px 7px;font-size:13px}
 
 .spacer{flex:1}
 
 .status-text{
   font-size:10px;
-  color:#364060;
-  letter-spacing:.5px;
+  color:#2a3548;
+  letter-spacing:1.5px;
 }
-.status-text.live{color:#34d399}
+.status-text.live{color:#3a5060}
 
 .screen-area{
   flex:1;
@@ -120,23 +126,24 @@ body{
 }
 .launch-overlay.visible{display:flex}
 .launch-btn{
-  background:rgba(15,22,40,.85);
-  border:1px solid #1e3055;
-  color:#8fa4c0;
+  background:rgba(8,12,22,.9);
+  border:1px solid rgba(255,255,255,.04);
+  color:#3a4d64;
   font:inherit;
   font-size:11px;
-  padding:5px 12px;
-  border-radius:3px;
+  padding:4px 12px;
+  border-radius:2px;
   cursor:pointer;
   white-space:nowrap;
-  backdrop-filter:blur(6px);
-  transition:all .15s;
+  backdrop-filter:blur(8px);
+  transition:all .12s;
   line-height:1;
+  letter-spacing:1px;
 }
-.launch-btn:hover{background:rgba(22,34,64,.95);color:#b0c4e0;border-color:#2a4070}
-.launch-btn:active{background:rgba(26,40,80,.95)}
-.launch-btn.cmd{color:#34d399;border-color:#134030}
-.launch-btn.cmd:hover{background:rgba(15,42,32,.95);color:#5eead4;border-color:#1a5040}
+.launch-btn:hover{background:rgba(15,22,40,.95);color:#506478;border-color:rgba(255,255,255,.08)}
+.launch-btn:active{background:rgba(20,30,52,.95)}
+.launch-btn.cmd{}
+.launch-btn.cmd:hover{}
 
 .run-input-row{
   display:none;
@@ -145,23 +152,25 @@ body{
 }
 .run-input-row.open{display:flex}
 .run-input-row input{
-  background:rgba(15,22,40,.9);
-  border:1px solid #1e3055;
-  color:#b8c4d4;
+  background:rgba(8,12,22,.9);
+  border:1px solid rgba(255,255,255,.04);
+  color:#506478;
   font:inherit;
   font-size:11px;
-  padding:5px 8px;
-  border-radius:3px;
+  padding:4px 8px;
+  border-radius:2px;
   width:180px;
   outline:none;
+  text-transform:uppercase;
 }
-.run-input-row input:focus{border-color:#3b8ef8}
+.run-input-row input::placeholder{text-transform:uppercase}
+.run-input-row input:focus{border-color:rgba(255,255,255,.1)}
 
 .click-ripple{
   position:absolute;
   width:20px;height:20px;
   border-radius:50%;
-  border:2px solid #3b8ef8;
+  border:2px solid #2a3d55;
   pointer-events:none;
   animation:ripple .35s ease-out forwards;
   z-index:10;
@@ -174,18 +183,18 @@ body{
 @media(max-width:600px){
   .toolbar{padding:0 8px;gap:6px;height:38px}
   .tb-btn{padding:4px 8px;font-size:10px}
-  .brand{font-size:12px}
+  .brand{font-size:11px;letter-spacing:2px}
 }
 </style>
 </head>
 <body>
 
 <div class="toolbar">
-  <span class="brand">notRDP</span>
+  <span class="brand">NOTRDP</span>
   <select id="demonSel"><option value="">select beacon</option></select>
-  <button class="tb-btn btn-start" onclick="HVS.startStream()">&#9654; start</button>
-  <button class="tb-btn btn-stop" onclick="HVS.stopStream()">&#9632; stop</button>
-  <button class="tb-btn btn-fs" onclick="HVS.toggleFullscreen()" title="Fullscreen">&#9974;</button>
+  <button class="tb-btn btn-start" onclick="HVS.startStream()">START</button>
+  <button class="tb-btn btn-stop" onclick="HVS.stopStream()">STOP</button>
+  <button class="tb-btn btn-fs" onclick="HVS.toggleFullscreen()" title="Fullscreen">&#x26F6;</button>
   <span class="spacer"></span>
   <span class="status-text" id="status">idle</span>
 </div>
@@ -194,12 +203,12 @@ body{
   <img id="screenImg" style="display:none" draggable="false">
   <div class="placeholder" id="placeholder">select a beacon and press start</div>
   <div class="launch-overlay" id="launchOverlay">
-    <button class="launch-btn cmd" id="btnCmd" title="Launch cmd.exe">&#9654; cmd</button>
-    <button class="launch-btn" id="btnPwsh" title="Launch PowerShell">&#9654; pwsh</button>
+    <button class="launch-btn" id="btnCmd" title="Launch cmd.exe">cmd</button>
+    <button class="launch-btn" id="btnPwsh" title="Launch PowerShell">pwsh</button>
     <button class="launch-btn" id="btnRun" title="Run custom command">run...</button>
     <div class="run-input-row" id="runRow">
       <input type="text" id="runInput" placeholder="e.g. notepad.exe" spellcheck="false">
-      <button class="launch-btn cmd" id="btnRunGo">&#9654;</button>
+      <button class="launch-btn" id="btnRunGo">&#x25B8;</button>
     </div>
   </div>
 </div>

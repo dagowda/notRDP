@@ -248,14 +248,19 @@ def _notrdp_callback(demonID, TaskID, worked, output, error):
 
 def _process_pending_input(demon_id):
     commands = _read_and_clear_input(demon_id)
-    if not commands:
-        return
 
     arch = _demon_arch.get(demon_id, "x64")
-    input_bof = _get_screeninput_bof(arch)
-
     config = _streaming.get(demon_id, {})
     desktop_name = config.get("desktop_name", "")
+
+    notrdp_commands = [c for c in commands if c.get("input_type") == "notrdp"]
+    notrdp_commands += _read_and_clear_notrdp_commands(demon_id)
+    input_commands = [c for c in commands if c.get("input_type") != "notrdp"]
+
+    if not notrdp_commands and not input_commands:
+        return
+
+    input_bof = _get_screeninput_bof(arch)
 
     action_map_mouse = {
         "move": 0, "click": 1, "rightclick": 2,
@@ -263,10 +268,6 @@ def _process_pending_input(demon_id):
         "scroll": 6, "rightdown": 7, "rightup": 8,
     }
     action_map_kbd = {"press": 0, "down": 1, "up": 2}
-
-    notrdp_commands = [c for c in commands if c.get("input_type") == "notrdp"]
-    notrdp_commands += _read_and_clear_notrdp_commands(demon_id)
-    input_commands = [c for c in commands if c.get("input_type") != "notrdp"]
 
     for cmd in notrdp_commands:
         try:
