@@ -7,14 +7,18 @@ A Havoc C2 plugin that creates an invisible alternate Windows desktop, streams i
 </p>
 
 
-
-
 ## How It Works
 
 1. Creates a hidden desktop via `CreateDesktopW` and launches `explorer.exe` on it
 2. Captures the hidden desktop using `PrintWindow` compositing and streams JPEG frames
 3. Injects mouse/keyboard input via `PostMessage` directly to hidden desktop windows
 4. Renders the stream in a browser viewer with full input capture
+
+## POC
+
+<p align="center">
+  <video src="https://github.com/dagowda/notRDP/blob/a956fdda72acb2acc42fe5fbd4465dc066537a61/POC.mp4" controls width="700"></video>
+</p>
 
 ## Prerequisites
 
