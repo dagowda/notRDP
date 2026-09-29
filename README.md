@@ -65,7 +65,7 @@ notrdp-close              # Close session
 ```
 
 
-## notrdpuser
+## notrdpuser Plugin
 
 A variant plugin that captures the user's real desktop session instead of creating a hidden one. Includes opsec-friendly keystroke capture via GetAsyncKeyState polling embedded in the screenshot BOF. Packaged as notrdpuser.zip in the same repo extract and load notrdpuser.py the same way.
 
